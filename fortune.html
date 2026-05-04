@@ -1,0 +1,984 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>今日运势 · 专业卜卦</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700;900&display=swap');
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Noto Serif SC', 'STSong', serif;
+    background: #0a0a14;
+    color: #e8d5b7;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+  .app { max-width: 420px; margin: 0 auto; min-height: 100vh; position: relative; }
+  .page { display: none; padding-bottom: 80px; }
+  .page.active { display: block; animation: fadeIn 0.4s ease; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+  /* Stars background */
+  .stars { position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 0; }
+  .star { position: absolute; background: #d4a844; border-radius: 50%; animation: twinkle var(--d) ease-in-out infinite; }
+  @keyframes twinkle { 0%, 100% { opacity: 0.2; } 50% { opacity: 0.8; } }
+
+  /* Header */
+  .header { text-align: center; padding: 36px 24px 20px; position: relative; z-index: 1; }
+  .header-line { width: 100px; height: 1px; background: linear-gradient(90deg, transparent, #d4a844, transparent); margin: 0 auto 8px; }
+  .header-sub { font-size: 12px; color: #d4a844; letter-spacing: 6px; }
+  .header-title { font-size: 34px; font-weight: 900; color: #f0e6d3; letter-spacing: 4px; margin: 4px 0; }
+  .header-desc { font-size: 12px; color: #8b7a5e; letter-spacing: 2px; }
+
+  /* Form */
+  .form-card { background: #111122; border: 1px solid #2a1a3e; border-radius: 12px; margin: 0 20px; padding: 24px 20px; position: relative; z-index: 1; }
+  .field { margin-bottom: 18px; }
+  .field:last-child { margin-bottom: 0; }
+  .field-label { font-size: 13px; color: #d4a844; margin-bottom: 6px; letter-spacing: 2px; }
+  .field-input {
+    width: 100%; height: 44px; background: #1a1a2e; border: 1px solid #3a2a4e; border-radius: 8px;
+    color: #e8d5b7; font-size: 14px; padding: 0 14px; font-family: inherit; outline: none; transition: border .3s;
+  }
+  .field-input:focus { border-color: #d4a844; }
+  .field-input::placeholder { color: #5a5060; }
+  
+  /* Calendar popup */
+  .calendar-popup {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(10,10,20,0.9); z-index: 100; display: none; align-items: center; justify-content: center;
+    display: none; flex-direction: column; padding: 20px;
+  }
+  .calendar-popup.show { display: flex; }
+  .calendar-container {
+    background: #111122; border: 1px solid #2a1a3e; border-radius: 12px; width: 100%; max-width: 320px; padding: 20px; position: relative;
+  }
+  .calendar-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+  .calendar-title { font-size: 16px; color: #f0e6d3; font-weight: bold; cursor: pointer; }
+  .calendar-nav { display: flex; align-items: center; gap: 8px; }
+  .calendar-nav-btn { width: 30px; height: 30px; border-radius: 50%; background: #1a1a2e; color: #e8d5b7; border: 1px solid #3a2a4e; cursor: pointer; font-size: 14px; display: flex; align-items: center; justify-content: center; }
+  .calendar-close { font-size: 22px; color: #8b7a5e; background: none; border: none; cursor: pointer; }
+  
+  /* Year picker */
+  .year-picker { display: flex; flex-wrap: wrap; gap: 8px; max-height: 200px; overflow-y: auto; padding: 8px; }
+  .year-btn { flex: 1 1 calc(25% - 8px); text-align: center; padding: 8px 0; border-radius: 6px; background: #1a1a2e; color: #e8d5b7; cursor: pointer; }
+  .year-btn:hover { background: #2a1a3e; }
+  .year-btn.selected { background: #d4a844; color: #0a0a14; font-weight: bold; }
+  .calendar-weekdays { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; margin-bottom: 8px; }
+  .calendar-weekday { text-align: center; font-size: 12px; color: #8b7a5e; padding: 4px 0; }
+  .calendar-days { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+  .calendar-day { aspect-ratio: 1; display: flex; align-items: center; justify-content: center; border-radius: 50%; cursor: pointer; transition: all .3s; }
+  .calendar-day:hover { background: #2a1a3e; }
+  .calendar-day.current-month { color: #e8d5b7; }
+  .calendar-day.other-month { color: #5a5060; }
+  .calendar-day.selected { background: #d4a844; color: #0a0a14; font-weight: bold; }
+  .calendar-day.today { border: 1px solid #d4a844; }
+  .calendar-actions { display: flex; gap: 10px; margin-top: 16px; }
+  .calendar-actions .btn { flex: 1; }
+  
+  /* Confirm popup */
+  .confirm-popup {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(10,10,20,0.9); z-index: 101; display: none; align-items: center; justify-content: center;
+  }
+  .confirm-popup.show { display: flex; }
+  .confirm-container {
+    background: #111122; border: 1px solid #2a1a3e; border-radius: 12px; width: 100%; max-width: 300px; padding: 24px; text-align: center;
+  }
+  .confirm-title { font-size: 16px; color: #f0e6d3; margin-bottom: 12px; }
+  .confirm-message { font-size: 13px; color: #8b7a5e; margin-bottom: 20px; }
+  .confirm-actions { display: flex; gap: 10px; }
+  .confirm-actions .btn { flex: 1; }
+  .gender-row { display: flex; gap: 12px; }
+  .gender-btn {
+    flex: 1; height: 44px; background: #1a1a2e; border: 1px solid #3a2a4e; border-radius: 8px;
+    color: #8b7a5e; font-size: 14px; cursor: pointer; font-family: inherit; transition: all .3s; display: flex; align-items: center; justify-content: center;
+  }
+  .gender-btn.selected { background: #2a1a3e; border-color: #d4a844; color: #d4a844; font-weight: bold; }
+
+  .btn {
+    width: 100%; height: 50px; border: none; border-radius: 10px; font-size: 16px; cursor: pointer;
+    font-family: inherit; font-weight: 700; letter-spacing: 3px; transition: all .3s; position: relative; overflow: hidden;
+  }
+  .btn-primary { background: linear-gradient(135deg, #d4a844, #b8902a); color: #0a0a14; margin-top: 20px; }
+  .btn-primary:active { transform: scale(0.97); }
+  .btn-secondary { background: #1a1a2e; color: #8b7a5e; border: 1px solid #3a2a4e; }
+  .hint { text-align: center; font-size: 11px; color: #5a4a3a; margin-top: 10px; }
+
+  /* Bottom nav */
+  .bottom-nav { display: flex; justify-content: center; gap: 40px; margin-top: 30px; position: relative; z-index: 1; }
+  .bottom-nav span { font-size: 12px; color: #8b7a5e; cursor: pointer; }
+
+  /* Result Page */
+  .result-header { text-align: center; padding: 30px 24px 16px; position: relative; z-index: 1; }
+  .result-date { font-size: 11px; color: #8b7a5e; letter-spacing: 2px; }
+  .result-name { font-size: 22px; font-weight: 700; color: #f0e6d3; margin: 4px 0; }
+  .result-sub { font-size: 12px; color: #8b7a5e; }
+
+  .score-area { text-align: center; padding: 10px 24px 16px; position: relative; z-index: 1; }
+  .score-circle {
+    width: 110px; height: 110px; border-radius: 50%; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; margin: 0 auto; position: relative;
+    background: #111122; border: 3px solid #d4a844; box-shadow: 0 0 30px rgba(212,168,68,0.15);
+  }
+  .score-num { font-size: 38px; font-weight: 900; color: #d4a844; line-height: 1; }
+  .score-label { font-size: 10px; color: #8b7a5e; margin-top: 2px; }
+  .score-desc { font-size: 13px; color: #c4b8a8; margin-top: 12px; line-height: 1.8; white-space: pre-line; }
+
+  .section { margin: 0 20px 16px; position: relative; z-index: 1; }
+  .section-title { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+  .section-dot { width: 6px; height: 6px; background: #d4a844; border-radius: 50%; }
+  .section-label { font-size: 14px; color: #d4a844; font-weight: 700; letter-spacing: 2px; }
+
+  .fortune-card {
+    background: #111122; border: 1px solid #2a1a3e; border-radius: 10px; padding: 14px 16px;
+    display: flex; align-items: center; margin-bottom: 8px; transition: all .3s;
+  }
+  .fortune-card:active { border-color: #d4a844; }
+  .fc-info { flex: 1; }
+  .fc-cat { font-size: 13px; font-weight: 700; margin-bottom: 3px; }
+  .fc-desc { font-size: 11px; color: #8b7a5e; }
+  .fc-score { font-size: 24px; font-weight: 900; margin-left: 12px; }
+
+  .lucky-row { display: flex; gap: 10px; }
+  .lucky-item {
+    flex: 1; background: #111122; border: 1px solid #2a1a3e; border-radius: 10px;
+    padding: 14px 8px; text-align: center;
+  }
+  .lucky-icon { font-size: 22px; }
+  .lucky-val { font-size: 13px; font-weight: 700; margin-top: 6px; }
+  .lucky-lab { font-size: 10px; color: #8b7a5e; margin-top: 2px; }
+
+  .result-actions { display: flex; gap: 10px; margin: 0 20px 24px; position: relative; z-index: 1; }
+  .result-actions .btn { margin-top: 0; }
+
+  /* Bazi info */
+  .bazi-info {
+    background: #111122; border: 1px solid #2a1a3e; border-radius: 10px; padding: 14px 16px;
+    display: flex; justify-content: space-around; text-align: center; margin-bottom: 8px;
+  }
+  .bazi-col { flex: 1; }
+  .bazi-stem { font-size: 16px; font-weight: 700; color: #d4a844; }
+  .bazi-branch { font-size: 14px; color: #e8d5b7; }
+  .bazi-label { font-size: 10px; color: #8b7a5e; margin-top: 2px; }
+
+  /* History */
+  .hist-header { padding: 30px 24px 16px; position: relative; z-index: 1; }
+  .hist-back { width: 36px; height: 36px; border-radius: 50%; background: #111122; border: 1px solid #3a2a4e; color: #d4a844; font-size: 16px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; margin-right: 12px; font-family: inherit; }
+  .hist-h1 { font-size: 20px; font-weight: 700; color: #f0e6d3; letter-spacing: 2px; display: inline; }
+  .hist-sub { font-size: 12px; color: #8b7a5e; margin: 6px 24px 16px; position: relative; z-index: 1; }
+
+  .hist-item {
+    background: #111122; border: 1px solid #2a1a3e; border-radius: 10px; padding: 14px 16px;
+    margin: 0 20px 8px; display: flex; align-items: center; cursor: pointer; position: relative; z-index: 1;
+  }
+  .hist-item:active { border-color: #d4a844; }
+  .hist-info { flex: 1; }
+  .hist-date { font-size: 13px; font-weight: 700; }
+  .hist-summary { font-size: 11px; color: #8b7a5e; margin-top: 3px; }
+  .hist-score { font-size: 24px; font-weight: 900; margin-left: 12px; }
+
+  .empty-state { text-align: center; padding: 60px 20px; color: #5a5060; position: relative; z-index: 1; }
+  .empty-icon { font-size: 48px; display: block; margin-bottom: 12px; }
+
+  /* Loading */
+  .loading-overlay {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(10,10,20,0.9);
+    display: none; align-items: center; justify-content: center; z-index: 99; flex-direction: column; gap: 16px;
+  }
+  .loading-overlay.show { display: flex; }
+  .loader {
+    width: 50px; height: 50px; border: 2px solid #2a1a3e; border-top-color: #d4a844;
+    border-radius: 50%; animation: spin 1s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .loading-text { font-size: 14px; color: #d4a844; letter-spacing: 3px; animation: pulse 1.5s ease-in-out infinite; }
+  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+</style>
+</head>
+<body>
+<div class="stars" id="stars"></div>
+<div class="loading-overlay" id="loading"><div class="loader"></div><span class="loading-text">天机推算中</span></div>
+<div class="app">
+
+  <!-- PAGE: Input -->
+  <div class="page active" id="page-input">
+    <div class="header">
+      <div class="header-line"></div>
+      <div class="header-sub">趋吉避凶</div>
+      <div class="header-title">今日运势</div>
+      <div class="header-desc">专业卜卦 · 揭示天机</div>
+    </div>
+    <div class="form-card">
+      <div class="field">
+        <div class="field-label">姓　　名</div>
+        <input class="field-input" id="input-name" placeholder="请输入您的姓名" maxlength="10">
+      </div>
+  <div class="field">
+    <div class="field-label">出生日期</div>
+    <input class="field-input" type="text" id="input-birth" placeholder="请选择出生日期" readonly onclick="openCalendarFromInput()">
+    <input type="hidden" id="input-birth-hidden">
+  </div>
+      <div class="field">
+        <div class="field-label">性　　别</div>
+        <div class="gender-row">
+          <button class="gender-btn selected" onclick="selectGender('男', this)">男</button>
+          <button class="gender-btn" onclick="selectGender('女', this)">女</button>
+        </div>
+      </div>
+      <div class="field">
+        <div class="field-label">出生时辰（选填）</div>
+        <select class="field-input" id="input-hour">
+          <option value="">不指定</option>
+          <option value="0">子时 (23:00-01:00)</option>
+          <option value="1">丑时 (01:00-03:00)</option>
+          <option value="2">寅时 (03:00-05:00)</option>
+          <option value="3">卯时 (05:00-07:00)</option>
+          <option value="4">辰时 (07:00-09:00)</option>
+          <option value="5">巳时 (09:00-11:00)</option>
+          <option value="6">午时 (11:00-13:00)</option>
+          <option value="7">未时 (13:00-15:00)</option>
+          <option value="8">申时 (15:00-17:00)</option>
+          <option value="9">酉时 (17:00-19:00)</option>
+          <option value="10">戌时 (19:00-21:00)</option>
+          <option value="11">亥时 (21:00-23:00)</option>
+        </select>
+      </div>
+      <button class="btn btn-primary" id="fortune-btn" onclick="doFortune()">🔮 查看今日运势</button>
+  <div class="hint" id="fortune-hint" style="display:none;">今日运势已查询，请明日再来</div>
+    </div>
+    <div class="hint">以上信息将用于专业八字卜卦推算</div>
+    <div class="bottom-nav">
+      <span onclick="showPage('history')">📋 历史记录</span>
+      <span onclick="alert('基于八字命理学，结合天干地支、五行生克推算运势。')">⚡ 关于卜卦</span>
+    </div>
+    <div class="hint" id="reset-link" style="display:none; margin-top: 16px;" onclick="showResetConfirm()">🔄 为他人查询运势</div>
+    
+    <!-- Calendar Popup -->
+    <div class="calendar-popup" id="calendar-popup">
+      <div class="calendar-container">
+        <div class="calendar-header">
+          <button class="calendar-close" onclick="closeCalendar()">×</button>
+          <div class="calendar-title">选择出生日期</div>
+          <div style="width:22px;"></div>
+        </div>
+    <div class="calendar-header">
+      <button class="calendar-nav-btn" onclick="changeMonth(-1)">‹</button>
+      <div class="calendar-title" id="calendar-month-year" onclick="toggleYearPicker()">2026年5月</div>
+      <button class="calendar-nav-btn" onclick="changeMonth(1)">›</button>
+    </div>
+    <div class="calendar-weekdays">
+      <div class="calendar-weekday">日</div>
+      <div class="calendar-weekday">一</div>
+      <div class="calendar-weekday">二</div>
+      <div class="calendar-weekday">三</div>
+      <div class="calendar-weekday">四</div>
+      <div class="calendar-weekday">五</div>
+      <div class="calendar-weekday">六</div>
+    </div>
+    <div class="calendar-days" id="calendar-days"></div>
+    <div class="year-picker" id="year-picker" style="display:none;">
+      <!-- Years will be populated by JS -->
+    </div>
+    <div class="calendar-actions">
+      <button class="btn btn-secondary" onclick="closeCalendar()">取消</button>
+      <button class="btn btn-primary" onclick="confirmDate()" id="calendar-confirm-btn" disabled>确定</button>
+    </div>
+      </div>
+    </div>
+    
+    <!-- Confirm Popup -->
+    <div class="confirm-popup" id="confirm-popup">
+      <div class="confirm-container">
+        <div class="confirm-title">重新查询确认</div>
+        <div class="confirm-message">您今天已经查询过运势，是否要重新为他人查询？</div>
+        <div class="confirm-actions">
+          <button class="btn btn-secondary" onclick="hideResetConfirm()">取消</button>
+          <button class="btn btn-primary" onclick="confirmReset()">确定</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PAGE: Result -->
+  <div class="page" id="page-result">
+    <div class="result-header">
+      <div class="result-date" id="result-date"></div>
+      <div class="result-name"><span id="result-icon">🔮</span> <span id="result-name-text"></span> 今日运势</div>
+      <div class="result-sub" id="result-zodiac"></div>
+    </div>
+    <div class="score-area">
+      <div class="score-circle"><span class="score-num" id="result-score">--</span><span class="score-label">综合运势分</span></div>
+      <div class="score-desc" id="result-motto"></div>
+    </div>
+    <div class="section">
+      <div class="section-title"><div class="section-dot"></div><div class="section-label">八字命盘</div></div>
+      <div class="bazi-info" id="bazi-display"></div>
+    </div>
+    <div class="section">
+      <div class="section-title"><div class="section-dot"></div><div class="section-label">今日运程详解</div></div>
+      <div id="fortune-cards"></div>
+    </div>
+    <div class="section">
+      <div class="section-title"><div class="section-dot"></div><div class="section-label">今日幸运物</div></div>
+      <div class="lucky-row" id="lucky-items"></div>
+    </div>
+    <div class="result-actions">
+      <button class="btn btn-secondary" onclick="showPage('history')">📋 历史记录</button>
+      <button class="btn btn-primary" onclick="showPage('input')">🔄 重新卜卦</button>
+    </div>
+  </div>
+
+  <!-- PAGE: History -->
+  <div class="page" id="page-history">
+    <div class="hist-header">
+      <button class="hist-back" onclick="showPage('input')">←</button>
+      <span class="hist-h1">历史记录</span>
+    </div>
+    <div class="hist-sub">📜 过往卜卦记录，洞察运势轨迹</div>
+    <div id="history-list"></div>
+    <div class="empty-state" id="empty-state" style="display:none">
+      <span class="empty-icon">📭</span>暂无历史记录<br>快去卜一卦吧
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ============ CORE DIVINATION ENGINE ============
+
+const TIANGAN = ['甲','乙','丙','丁','戊','己','庚','辛','壬','癸'];
+const DIZHI = ['子','丑','寅','卯','辰','巳','午','未','申','酉','戌','亥'];
+const SHENGXIAO = ['鼠','牛','虎','兔','龙','蛇','马','羊','猴','鸡','狗','猪'];
+const WUXING_TG = ['木','木','火','火','土','土','金','金','水','水']; // 天干五行
+const WUXING_DZ = ['水','土','木','木','土','火','火','土','金','金','土','水']; // 地支五行
+const YINYANG = ['阳','阴','阳','阴','阳','阴','阳','阴','阳','阴'];
+const WUXING_COLOR = { '木':'#22c55e','火':'#ef4444','土':'#d4a844','金':'#f0e6d3','水':'#06b6d4' };
+const WUXING_DIR = { '木':'东','火':'南','土':'中','金':'西','水':'北' };
+const WUXING_NUM = { '木':'3,8','火':'2,7','土':'5,0','金':'4,9','水':'1,6' };
+const WUXING_LUCKY = { '木':'绿色','火':'红色','土':'金色','金':'白色','水':'蓝色' };
+
+// Heavenly stems for year: (year - 4) % 10
+function yearStem(year) { return ((year - 4) % 10 + 10) % 10; }
+// Earthly branches for year: (year - 4) % 12
+function yearBranch(year) { return ((year - 4) % 12 + 12) % 12; }
+
+// Month stem-branch by year stem (五虎遁)
+function monthStem(yearStemIdx, month) {
+  const base = [2, 4, 6, 8, 0, 2, 4, 6, 8, 0]; // 甲己起丙寅, 乙庚起戊寅...
+  return (base[yearStemIdx] + (month - 1)) % 10;
+}
+function monthBranch(month) { return (month + 1) % 12; }
+
+// Hour stem by day stem (五鼠遁)
+function hourStem(dayStemIdx, hourBranchIdx) {
+  const base = [0, 2, 4, 6, 8, 0, 2, 4, 6, 8]; // 甲己起甲子, 乙庚起丙子...
+  return (base[dayStemIdx] + hourBranchIdx) % 10;
+}
+
+// Day stem-branch calculation using accurate algorithm
+// Base: 1900-01-01 = 甲戌日 (cycle index 10)
+function dayPillar(date) {
+  const base = new Date(1900, 0, 1);
+  const diff = Math.floor((date - base) / 86400000);
+  const cycleIdx = ((diff % 60) + 10 + 60) % 60;
+  return { stem: cycleIdx % 10, branch: cycleIdx % 12 };
+}
+
+// Calculate complete Bazi (four pillars)
+function calculateBazi(birthDate, hourIdx) {
+  const y = birthDate.getFullYear();
+  const m = birthDate.getMonth() + 1;
+  const d = birthDate.getDate();
+
+  const yStem = yearStem(y);
+  const yBranch = yearBranch(y);
+  const mStem = monthStem(yStem, m);
+  const mBranch = monthBranch(m);
+  const dp = dayPillar(birthDate);
+  const hStem = hourIdx !== null ? hourStem(dp.stem, hourIdx) : null;
+  const hBranch = hourIdx !== null ? hourIdx : null;
+
+  return {
+    year: { stem: yStem, branch: yBranch },
+    month: { stem: mStem, branch: mBranch },
+    day: { stem: dp.stem, branch: dp.branch },
+    hour: hStem !== null ? { stem: hStem, branch: hBranch } : null
+  };
+}
+
+// Five elements interaction score
+function elementRelation(e1, e2) {
+  // 生 (generates): score boost
+  const generates = { '木':'火','火':'土','土':'金','金':'水','水':'木' };
+  // 克 (controls): moderate
+  const controls = { '木':'土','土':'水','水':'火','火':'金','金':'木' };
+  if (generates[e1] === e2) return 0.25; // I generate -> give energy, moderate good
+  if (generates[e2] === e1) return 0.40; // generates me -> receive energy, good
+  if (controls[e1] === e2) return -0.15; // I control -> effort
+  if (controls[e2] === e1) return -0.30; // controls me -> pressure
+  return 0; // same element -> neutral
+}
+
+// ============ FORTUNE GENERATION ============
+
+const FORTUNE_DATA = {
+  career: {
+    excellent: ['贵人星高照，重要项目推进顺利','上级赏识，升迁机会在望','思路清晰，方案获得认可','合作伙伴默契，事半功倍'],
+    good: ['按部就班即可，稳中有进','与同事沟通顺畅，效率提升','适合处理遗留难题','留心细节，避免疏漏'],
+    ok: ['保持低调，做好本职工作','不宜冒进，守成为上','注意文书合同细节','谨防小人作梗'],
+  },
+  love: {
+    excellent: ['桃花运旺，单身者易遇心仪之人','感情甜蜜，适合约会告白','与伴侣心有灵犀，关系升温','异性缘佳，魅力四射'],
+    good: ['感情平稳，宜多沟通交流','小惊喜能增进感情','适合与伴侣规划未来','保持耐心，静待花开'],
+    ok: ['情绪波动，勿因小事争执','单身者不宜急于表白','多包容对方，避免冷战','桃花运势平平，静待时机'],
+  },
+  wealth: {
+    excellent: ['正财运旺，有望获得额外收入','投资眼光独到，收益可观','适合洽谈大额合作','偏财运佳，或有意外之喜'],
+    good: ['财务平稳，适合储蓄规划','小有进账，理财宜保守','不宜大额投资，稳扎稳打','量入为出，避免冲动消费'],
+    ok: ['财运平平，注意开支控制','不宜借贷担保','谨防财务陷阱','投资需三思而后行'],
+  },
+  health: {
+    excellent: ['精力充沛，适合运动锻炼','身体状况极佳，神清气爽','适合开启新的健身计划','睡眠质量好，身心愉悦'],
+    good: ['注意饮食规律，肠胃需保养','劳逸结合，避免过度疲劳','适合轻量运动，保持活力','多喝水，注意皮肤保湿'],
+    ok: ['注意颈椎腰椎，避免久坐','情绪焦虑，宜放松心情','注意头部保养，早睡早起','饮食宜清淡，忌辛辣油腻'],
+  }
+};
+
+function generateFortune(bazi, today, userName, gender) {
+  const todayDP = dayPillar(today);
+  const todayStem = todayDP.stem;
+  const todayBranch = todayDP.branch;
+  const todayMonth = today.getMonth(); // 0-11
+
+  // User day master element
+  const userElement = WUXING_TG[bazi.day.stem];
+
+  // Today day stem element
+  const todayElement = WUXING_TG[todayStem];
+
+  // Element relationship
+  const relScore = elementRelation(userElement, todayElement);
+
+  // Day branch clash with user day branch
+  const clashMap = [6,7,8,9,10,11,0,1,2,3,4,5]; // 子午冲, 丑未冲...
+  const clash = clashMap[bazi.day.branch] === todayBranch ? -0.1 : 0;
+
+  // Month seasonal strength for user element
+  const seasonBoost = getSeasonBoost(userElement, todayMonth);
+
+  // Combine to base score (60-100 range)
+  let baseScore = 70 + relScore * 40 + clash * 30 + seasonBoost * 15;
+  baseScore = Math.max(55, Math.min(98, Math.round(baseScore)));
+
+  // Generate sub-scores with some deterministic variation
+  const seed = bazi.day.stem * 10 + bazi.day.branch + todayStem * 5 + todayBranch;
+  const pseudoRandom = (offset) => {
+    const x = Math.sin(seed + offset * 127.1) * 43758.5453;
+    return (x - Math.floor(x)) * 30 - 15;
+  };
+
+  const aspects = {
+    career: { name: '💼 事业运势', color: '#06b6d4', score: clamp(baseScore + pseudoRandom(1), 55, 98) },
+    love: { name: '💕 爱情运势', color: '#ec4899', score: clamp(baseScore + pseudoRandom(2), 55, 98) },
+    wealth: { name: '💰 财运运势', color: '#d4a844', score: clamp(baseScore + pseudoRandom(3), 55, 98) },
+    health: { name: '🫀 健康运势', color: '#22c55e', score: clamp(baseScore + pseudoRandom(4), 55, 98) },
+  };
+
+  // Determine level and pick description for each aspect
+  const levels = {};
+  for (const [key, val] of Object.entries(aspects)) {
+    const cat = key === 'career' ? 'career' : key === 'love' ? 'love' : key === 'wealth' ? 'wealth' : 'health';
+    let tier;
+    if (val.score >= 80) tier = 'excellent';
+    else if (val.score >= 65) tier = 'good';
+    else tier = 'ok';
+
+    const options = FORTUNE_DATA[cat][tier];
+    levels[key] = options[(seed + val.score) % options.length];
+  }
+
+  // Motto based on overall score
+  let motto;
+  if (baseScore >= 85) motto = '鸿运当头，诸事顺遂\n贵人相助，宜积极进取，必有所成';
+  else if (baseScore >= 70) motto = '运势平稳，宜稳中求进\n脚踏实地，机会留给有准备的人';
+  else if (baseScore >= 60) motto = '运势平平，宜静不宜动\n遇事冷静，守住本心，平安是福';
+  else motto = '今日宜低调行事，戒骄戒躁\n心怀善念，困难终将过去';
+
+  // Lucky items
+  const luckyColor = WUXING_LUCKY[userElement];
+  const userStemYinYang = YINYANG[bazi.day.stem];
+  const luckyNum = WUXING_NUM[userElement].split(',')[userStemYinYang === '阳' ? 0 : 1];
+  const luckyDir = WUXING_DIR[userElement];
+
+  // Today date string
+  const monthNames = ['一','二','三','四','五','六','七','八','九','十','十一','十二'];
+  const dayNames = ['日','一','二','三','四','五','六'];
+  const dateStr = `${today.getFullYear()}年${monthNames[today.getMonth()]}月${today.getDate()}日 周${dayNames[today.getDay()]} · ${TIANGAN[todayStem]}${DIZHI[todayBranch]}日`;
+
+  // Zodiac
+  const zodiac = SHENGXIAO[yearBranch(bazi.year.branch)];
+
+  return {
+    dateStr, baseScore, aspects, levels, motto, zodiac,
+    luckyItems: { color: luckyColor, num: luckyNum, dir: luckyDir },
+    todayStem, todayBranch, todayElement, userElement
+  };
+}
+
+function clamp(v, min, max) { return Math.max(min, Math.min(max, Math.round(v))); }
+
+function getSeasonBoost(element, month) {
+  // Spring(2-4): wood strong; Summer(5-7): fire strong; Autumn(8-10): metal strong; Winter(11-1): water strong
+  const seasons = { spring:[2,3,4], summer:[5,6,7], autumn:[8,9,10], winter:[11,0,1] };
+  const dominant = { spring:'木', summer:'火', autumn:'金', winter:'水' };
+  let curSeason;
+  for (const [s, ms] of Object.entries(seasons)) {
+    if (ms.includes(month)) { curSeason = s; break; }
+  }
+  if (dominant[curSeason] === element) return 0.3;
+  // Also check if element generates dominant season element
+  const generates = { '木':'火','火':'土','土':'金','金':'水','水':'木' };
+  if (generates[element] === dominant[curSeason]) return -0.1;
+  if (generates[dominant[curSeason]] === element) return 0.15;
+  return 0;
+}
+
+function baziToString(bazi) {
+  const parts = [
+    { label:'年柱', stem:bazi.year.stem, branch:bazi.year.branch },
+    { label:'月柱', stem:bazi.month.stem, branch:bazi.month.branch },
+    { label:'日柱', stem:bazi.day.stem, branch:bazi.day.branch },
+  ];
+  if (bazi.hour) parts.push({ label:'时柱', stem:bazi.hour.stem, branch:bazi.hour.branch });
+  return parts;
+}
+
+const UNIQUE_ID = 'fortune_uid_' + Math.random().toString(36).substr(2, 8);
+
+// ============ CALENDAR LOGIC ============
+
+let currentYear = new Date().getFullYear();
+let currentMonth = new Date().getMonth(); // 0-11
+let selectedDate = null;
+const today = new Date();
+let showingYearPicker = false;
+
+function openCalendarFromInput() {
+  // Parse the hidden input value to set selectedDate
+  const hiddenValue = document.getElementById('input-birth-hidden').value;
+  if (hiddenValue) {
+    selectedDate = hiddenValue;
+    const date = new Date(hiddenValue);
+    currentYear = date.getFullYear();
+    currentMonth = date.getMonth();
+  } else {
+    // If no value, use current date as default
+    if (!selectedDate) {
+      currentYear = new Date().getFullYear();
+      currentMonth = new Date().getMonth();
+    }
+  }
+  document.getElementById('calendar-popup').classList.add('show');
+  renderCalendar();
+  document.getElementById('year-picker').style.display = 'none';
+  showingYearPicker = false;
+  // Set initial state of confirm button based on whether a date is selected
+  document.getElementById('calendar-confirm-btn').disabled = !selectedDate;
+}
+
+function openCalendar() {
+  // Reset to current month if no date selected
+  if (!selectedDate) {
+    currentYear = new Date().getFullYear();
+    currentMonth = new Date().getMonth();
+  }
+  document.getElementById('calendar-popup').classList.add('show');
+  renderCalendar();
+  document.getElementById('year-picker').style.display = 'none';
+  showingYearPicker = false;
+  // Initially disable confirm button
+  document.getElementById('calendar-confirm-btn').disabled = !selectedDate;
+}
+
+function closeCalendar() {
+  document.getElementById('calendar-popup').classList.remove('show');
+}
+
+function changeMonth(dir) {
+  currentMonth += dir;
+  if (currentMonth > 11) {
+    currentMonth = 0;
+    currentYear++;
+  } else if (currentMonth < 0) {
+    currentMonth = 11;
+    currentYear--;
+  }
+  renderCalendar();
+}
+
+function toggleYearPicker() {
+  showingYearPicker = !showingYearPicker;
+  document.getElementById('year-picker').style.display = showingYearPicker ? 'flex' : 'none';
+  if (showingYearPicker) {
+    renderYearPicker();
+  }
+}
+
+function renderYearPicker() {
+  const yearPickerEl = document.getElementById('year-picker');
+  yearPickerEl.innerHTML = '';
+  
+  // Show 50 years: current year in middle
+  const startYear = currentYear - 25;
+  const endYear = currentYear + 24;
+  
+  for (let y = startYear; y <= endYear; y++) {
+    const btn = document.createElement('div');
+    btn.className = 'year-btn';
+    btn.textContent = y;
+    if (y === currentYear) {
+      btn.classList.add('selected');
+    }
+    btn.onclick = () => {
+      currentYear = y;
+      showingYearPicker = false;
+      document.getElementById('year-picker').style.display = 'none';
+      renderCalendar();
+    };
+    yearPickerEl.appendChild(btn);
+  }
+}
+
+function renderCalendar() {
+  const monthYearEl = document.getElementById('calendar-month-year');
+  const daysEl = document.getElementById('calendar-days');
+  const monthNames = ['一','二','三','四','五','六','七','八','九','十','十一','十二'];
+  monthYearEl.textContent = `${currentYear}年${monthNames[currentMonth]}月`;
+
+  // Clear days
+  daysEl.innerHTML = '';
+
+  // Get first day of month (0-6, Sunday-Saturday)
+  const firstDay = new Date(currentYear, currentMonth, 1).getDay();
+  // Total days in month
+  const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+  // Total days in previous month
+  const daysInPrevMonth = new Date(currentYear, currentMonth, 0).getDate();
+
+  // Previous month's days at start
+  for (let i = firstDay - 1; i >= 0; i--) {
+    const day = document.createElement('div');
+    day.className = 'calendar-day other-month';
+    day.textContent = daysInPrevMonth - i;
+    daysEl.appendChild(day);
+  }
+
+  // Current month's days
+  for (let d = 1; d <= daysInMonth; d++) {
+    const day = document.createElement('div');
+    day.className = 'calendar-day current-month';
+    day.textContent = d;
+    
+    // Check if today
+    if (currentYear === today.getFullYear() && currentMonth === today.getMonth() && d === today.getDate()) {
+      day.classList.add('today');
+    }
+    
+    // Check if selected
+    let isSelected = false;
+    if (selectedDate) {
+      const selDate = new Date(selectedDate);
+      if (currentYear === selDate.getFullYear() && currentMonth === selDate.getMonth() && d === selDate.getDate()) {
+        day.classList.add('selected');
+        isSelected = true;
+      }
+    }
+    
+    day.onclick = () => {
+      // Remove previous selection
+      document.querySelectorAll('.calendar-day.selected').forEach(el => el.classList.remove('selected'));
+      // Select new date
+      day.classList.add('selected');
+      // Set selected date
+      selectedDate = new Date(currentYear, currentMonth, d).toISOString().split('T')[0];
+      // Enable confirm button
+      document.getElementById('calendar-confirm-btn').disabled = false;
+    };
+    
+    daysEl.appendChild(day);
+  }
+
+  // Next month's days at end to fill grid
+  const totalCells = 42; // 6 rows * 7 cols
+  const remaining = totalCells - (firstDay + daysInMonth);
+  for (let d = 1; d <= remaining; d++) {
+    const day = document.createElement('div');
+    day.className = 'calendar-day other-month';
+    day.textContent = d;
+    daysEl.appendChild(day);
+  }
+  
+  // If no date is selected, disable confirm button
+  document.getElementById('calendar-confirm-btn').disabled = !selectedDate;
+}
+
+function confirmDate() {
+  if (selectedDate) {
+    document.getElementById('input-birth-hidden').value = selectedDate;
+    const dateObj = new Date(selectedDate);
+    const monthNames = ['一','二','三','四','五','六','七','八','九','十','十一','十二'];
+    document.getElementById('input-birth').value = `${dateObj.getFullYear()}年${monthNames[dateObj.getMonth()]}月${dateObj.getDate()}日`;
+    // Close calendar after a brief delay to allow visual feedback
+    setTimeout(() => {
+      closeCalendar();
+    }, 150);
+  } else {
+    alert('请选择一个日期');
+  }
+}
+
+// ============ UI ============
+
+let gender = '男';
+let currentResult = null;
+
+function selectGender(val, btn) {
+  gender = val;
+  document.querySelectorAll('.gender-btn').forEach(b => {
+    b.classList.toggle('selected', b === btn);
+  });
+}
+
+function showPage(page) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  const map = { input:'page-input', result:'page-result', history:'page-history' };
+  document.getElementById(map[page] || map.input).classList.add('active');
+  if (page === 'history') renderHistory();
+}
+
+function showLoading(show) {
+  document.getElementById('loading').classList.toggle('show', show);
+}
+
+// Check if today already queried
+function checkTodayQueried() {
+  const today = new Date().toDateString();
+  const lastQuery = localStorage.getItem('fortune_last_query_date');
+  const btn = document.getElementById('fortune-btn');
+  const hint = document.getElementById('fortune-hint');
+  const resetLink = document.getElementById('reset-link');
+  
+  if (lastQuery === today) {
+    btn.disabled = true;
+    btn.style.background = 'linear-gradient(135deg, #3a3a5a, #2a2a4a)';
+    btn.textContent = '🔮 今日运势已查询';
+    hint.style.display = 'block';
+    resetLink.style.display = 'block';
+  } else {
+    btn.disabled = false;
+    btn.style.background = 'linear-gradient(135deg, #d4a844, #b8902a)';
+    btn.textContent = '🔮 查看今日运势';
+    hint.style.display = 'none';
+    resetLink.style.display = 'none';
+  }
+}
+
+function doFortune() {
+  const name = document.getElementById('input-name').value.trim() || '有缘人';
+  const birthStr = document.getElementById('input-birth-hidden').value;
+  const hourVal = document.getElementById('input-hour').value;
+
+  if (!birthStr) { alert('请选择出生日期'); return; }
+
+  const birthDate = new Date(birthStr + 'T00:00:00');
+  const hourIdx = hourVal !== '' ? parseInt(hourVal) : null;
+
+  showLoading(true);
+
+  setTimeout(() => {
+    const bazi = calculateBazi(birthDate, hourIdx);
+    const today = new Date();
+    const fortune = generateFortune(bazi, today, name, gender);
+
+    // Render result
+    document.getElementById('result-date').textContent = fortune.dateStr;
+    document.getElementById('result-name-text').textContent = name;
+    document.getElementById('result-zodiac').textContent = `生肖${fortune.zodiac} · 日主${TIANGAN[bazi.day.stem]}${WUXING_TG[bazi.day.stem]}`;
+    document.getElementById('result-score').textContent = fortune.baseScore;
+    document.getElementById('result-motto').textContent = fortune.motto;
+
+    // Bazi display
+    const baziParts = baziToString(bazi);
+    const baziHTML = baziParts.map(p =>
+      `<div class="bazi-col"><div class="bazi-stem">${TIANGAN[p.stem]}</div><div class="bazi-branch">${DIZHI[p.branch]}</div><div class="bazi-label">${p.label}</div></div>`
+    ).join('');
+    document.getElementById('bazi-display').innerHTML = baziHTML;
+
+    // Fortune cards
+    const cardsHTML = Object.entries(fortune.aspects).map(([key, val]) =>
+      `<div class="fortune-card">
+        <div class="fc-info"><div class="fc-cat">${val.name}</div><div class="fc-desc">${fortune.levels[key]}</div></div>
+        <div class="fc-score" style="color:${val.color}">${val.score}</div>
+      </div>`
+    ).join('');
+    document.getElementById('fortune-cards').innerHTML = cardsHTML;
+
+    // Lucky items
+    const li = fortune.luckyItems;
+    document.getElementById('lucky-items').innerHTML = `
+      <div class="lucky-item"><div class="lucky-icon">🎨</div><div class="lucky-val">${li.color}</div><div class="lucky-lab">幸运色</div></div>
+      <div class="lucky-item"><div class="lucky-icon">🔢</div><div class="lucky-val">${li.num}</div><div class="lucky-lab">幸运数字</div></div>
+      <div class="lucky-item"><div class="lucky-icon">🧭</div><div class="lucky-val">${li.dir}</div><div class="lucky-lab">幸运方位</div></div>
+    `;
+
+    // Save to history
+    currentResult = {
+      id: Date.now(),
+      date: new Date().toISOString(),
+      name, gender,
+      birthDate: birthStr,
+      hourIdx,
+      score: fortune.baseScore,
+      motto: fortune.motto.split('\n')[0],
+      zodiac: fortune.zodiac,
+      full: fortune
+    };
+    saveHistory(currentResult);
+
+    // Update last query date
+    localStorage.setItem('fortune_last_query_date', new Date().toDateString());
+
+    showLoading(false);
+    showPage('result');
+  }, 1200);
+}
+
+// ============ RESET LOGIC ============
+
+function showResetConfirm() {
+  document.getElementById('confirm-popup').classList.add('show');
+}
+
+function hideResetConfirm() {
+  document.getElementById('confirm-popup').classList.remove('show');
+}
+
+function confirmReset() {
+  // Clear last query date
+  localStorage.removeItem('fortune_last_query_date');
+  // Reset form
+  document.getElementById('input-name').value = '';
+  document.getElementById('input-birth-hidden').value = '';
+  document.getElementById('input-birth').value = '';
+  document.getElementById('input-hour').value = '';
+  document.querySelectorAll('.gender-btn').forEach((b, i) => {
+    b.classList.toggle('selected', i === 0);
+  });
+  gender = '男';
+  // Update UI
+  checkTodayQueried();
+  hideResetConfirm();
+}
+
+// ============ HISTORY ============
+
+function saveHistory(item) {
+  let hist = JSON.parse(localStorage.getItem('fortune_history') || '[]');
+  // Don't duplicate same-day entries - remove old same-date entry
+  const todayStr = new Date().toDateString();
+  hist = hist.filter(h => new Date(h.date).toDateString() !== todayStr || h.id === item.id);
+  hist.unshift(item);
+  if (hist.length > 50) hist = hist.slice(0, 50);
+  localStorage.setItem('fortune_history', JSON.stringify(hist));
+}
+
+function getHistory() {
+  return JSON.parse(localStorage.getItem('fortune_history') || '[]');
+}
+
+function renderHistory() {
+  const hist = getHistory();
+  const listEl = document.getElementById('history-list');
+  const emptyEl = document.getElementById('empty-state');
+
+  if (hist.length === 0) {
+    listEl.innerHTML = '';
+    emptyEl.style.display = 'block';
+    return;
+  }
+
+  emptyEl.style.display = 'none';
+
+  const colorMap = { '💼':'#06b6d4','💕':'#ec4899','💰':'#d4a844','🫀':'#22c55e' };
+  listEl.innerHTML = hist.map(item => {
+    const d = new Date(item.date);
+    const month = d.getMonth() + 1;
+    const day = d.getDate();
+    const weekDays = ['日','一','二','三','四','五','六'];
+    const dateLabel = `${month}月${day}日 周${weekDays[d.getDay()]}`;
+    const scoreColor = item.score >= 80 ? '#d4a844' : item.score >= 65 ? '#06b6d4' : '#ec4899';
+    return `<div class="hist-item" onclick="viewHistory(${item.id})">
+      <div class="hist-info"><div class="hist-date">${dateLabel}</div><div class="hist-summary">${item.motto}</div></div>
+      <div class="hist-score" style="color:${scoreColor}">${item.score}</div>
+    </div>`;
+  }).join('');
+}
+
+function viewHistory(id) {
+  const hist = getHistory();
+  const item = hist.find(h => h.id === id);
+  if (!item) return;
+  currentResult = item;
+  // Re-render result
+  document.getElementById('result-date').textContent = item.full.dateStr;
+  document.getElementById('result-name-text').textContent = item.name;
+  document.getElementById('result-zodiac').textContent = `生肖${item.zodiac} · 历史记录`;
+  document.getElementById('result-score').textContent = item.score;
+  document.getElementById('result-motto').textContent = item.full.motto;
+
+  const cardsHTML = Object.entries(item.full.aspects).map(([key, val]) =>
+    `<div class="fortune-card">
+      <div class="fc-info"><div class="fc-cat">${val.name}</div><div class="fc-desc">${item.full.levels[key]}</div></div>
+      <div class="fc-score" style="color:${val.color}">${val.score}</div>
+    </div>`
+  ).join('');
+  document.getElementById('fortune-cards').innerHTML = cardsHTML;
+
+  const li = item.full.luckyItems;
+  document.getElementById('lucky-items').innerHTML = `
+    <div class="lucky-item"><div class="lucky-icon">🎨</div><div class="lucky-val">${li.color}</div><div class="lucky-lab">幸运色</div></div>
+    <div class="lucky-item"><div class="lucky-icon">🔢</div><div class="lucky-val">${li.num}</div><div class="lucky-lab">幸运数字</div></div>
+    <div class="lucky-item"><div class="lucky-icon">🧭</div><div class="lucky-val">${li.dir}</div><div class="lucky-lab">幸运方位</div></div>
+  `;
+
+  document.getElementById('bazi-display').innerHTML = '';
+  showPage('result');
+}
+
+// Initialize on load
+window.onload = function() {
+  // If input has a value, parse it to set selectedDate
+  const hiddenInput = document.getElementById('input-birth-hidden').value;
+  if (hiddenInput) {
+    selectedDate = hiddenInput;
+  }
+  checkTodayQueried();
+  // Don't call renderCalendar() here as it's called when opening calendar
+};
+
+// Generate stars
+(function() {
+  const container = document.getElementById('stars');
+  for (let i = 0; i < 50; i++) {
+    const star = document.createElement('div');
+    star.className = 'star';
+    star.style.left = Math.random() * 100 + '%';
+    star.style.top = Math.random() * 100 + '%';
+    star.style.width = star.style.height = (Math.random() * 2.5 + 1) + 'px';
+    star.style.setProperty('--d', (Math.random() * 4 + 2) + 's');
+    star.style.animationDelay = Math.random() * 4 + 's';
+    container.appendChild(star);
+  }
+})();
+</script>
+</body>
+</html>
